@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundCloud Web App</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:0; }
-    .playlist-card { display:flex; flex-direction:column; align-items:center; margin:15px; background:white; border-radius:10px; padding:15px; box-shadow:0 3px 10px rgba(0,0,0,0.1); width:90%; max-width:400px; cursor:pointer; transition: transform 0.2s; }
-    .playlist-card:hover { transform: scale(1.03); }
-    .playlist-card img { width:100%; border-radius:10px; margin-bottom:10px; }
-    .playlist-card h3 { margin:5px 0; }
-    .playlist-card p { font-size:14px; color:#555; }
-    #playerContainer { margin:20px auto; width:90%; max-width:700px; text-align:center; }
-    #controls { margin:10px 0; }
-    #controls button { padding:10px 20px; margin:0 10px; border:none; border-radius:5px; cursor:pointer; background:#ff5500; color:white; font-size:16px; }
-    #backBtn { margin:10px; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; background:#555; color:white; font-size:14px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoundCloud Web App</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:0; }
+  .playlist-card { display:flex; flex-direction:column; align-items:center; margin:15px; background:white; border-radius:10px; padding:15px; box-shadow:0 3px 10px rgba(0,0,0,0.1); width:90%; max-width:400px; cursor:pointer; transition: transform 0.2s; }
+  .playlist-card:hover { transform: scale(1.03); }
+  .playlist-card img { width:100%; border-radius:10px; margin-bottom:10px; }
+  .playlist-card h3 { margin:5px 0; }
+  .playlist-card p { font-size:14px; color:#555; }
+  #playerContainer { margin:20px auto; width:90%; max-width:700px; text-align:center; }
+  #controls { margin:10px 0; }
+  #controls button { padding:10px 20px; margin:0 10px; border:none; border-radius:5px; cursor:pointer; background:#ff5500; color:white; font-size:16px; }
+  #backBtn { margin:10px; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; background:#555; color:white; font-size:14px; }
+</style>
 </head>
 <body>
 
@@ -40,19 +40,19 @@ const backBtn = document.getElementById("backBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-// Detect Android bridge
+// Check if Android bridge exists
 function hasAndroidBridge() {
   return (typeof Android !== 'undefined' && Android !== null);
 }
 
-let songCounter = 0;          // count songs
-let widget;                    // SoundCloud widget
-let currentPlaylist = [];      // array of track indexes
-let currentIndex = 0;          // current track index
-let playlistLinkPlaying = '';  // current playlist URL
+let songCounter = 0;
+let widget;
+let currentPlaylist = [];
+let currentIndex = 0;
+let playlistLinkPlaying = '';
 
-// Preload rewarded ad when app opens
-if (hasAndroidBridge()) {
+// Preload ad on start
+if(hasAndroidBridge()){
   Android.preloadRewardedAd();
 }
 
@@ -78,7 +78,7 @@ fetch('data.json')
   });
 
 // Open playlist page
-function openPlaylistPage(link) {
+function openPlaylistPage(link){
   playlistContainer.style.display = "none";
   playerPage.style.display = "block";
   playlistLinkPlaying = link;
@@ -86,14 +86,14 @@ function openPlaylistPage(link) {
 }
 
 // Back button
-backBtn.addEventListener("click", () => {
+backBtn.addEventListener("click", ()=>{
   playerPage.style.display = "none";
   playlistContainer.style.display = "block";
   playerContainer.innerHTML = "";
 });
 
 // Load playlist in SoundCloud widget
-function loadPlaylist(link) {
+function loadPlaylist(link){
   playerContainer.innerHTML = `
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
       allow="autoplay"
@@ -103,7 +103,7 @@ function loadPlaylist(link) {
   const iframe = document.getElementById("scPlayer");
   widget = SC.Widget(iframe);
 
-  widget.bind(SC.Widget.Events.READY, function() {
+  widget.bind(SC.Widget.Events.READY, function(){
     widget.getSounds(function(sounds){
       currentPlaylist = sounds.map((s,i)=>i);
       currentIndex = Math.floor(Math.random() * currentPlaylist.length);
@@ -111,60 +111,59 @@ function loadPlaylist(link) {
     });
   });
 
-  // Count every song finished
+  // When song finishes
   widget.bind(SC.Widget.Events.FINISH, function(){
     handleSongCompletion(false);
   });
 }
 
-// Play a track by index
-function playTrack(index) {
+// Play track
+function playTrack(index){
   currentIndex = index;
   widget.skip(currentIndex);
   widget.play();
-
-  // Count song immediately
-  handleSongCompletion(true);
+  handleSongCompletion(true); // count song immediately
 }
 
-// Handle song completion / skip
-function handleSongCompletion(fromPlayTrack=false) {
-  // Increment counter once per track
-  if (fromPlayTrack || !fromPlayTrack) {
-    songCounter++;
+// Handle song completion and ad logic
+function handleSongCompletion(fromPlayTrack=false){
+  songCounter++;
+
+  if(songCounter >= 5 && hasAndroidBridge()){
+    widget.pause();
+    Android.requestRewardedAd(); // request native ad
+    songCounter = 0;
+    return; // wait for native callback
   }
 
-  // Check if 5 songs reached
-  if (songCounter >= 5 && hasAndroidBridge()) {
-    widget.pause();                // pause current song
-    Android.requestRewardedAd();   // tell native to play ad
-    songCounter = 0;               // reset counter
-    return;                        // wait for ad completion
-  }
-
-  // Auto-play next track if called from FINISH
-  if (!fromPlayTrack) {
+  // Auto-play next track if song finished naturally
+  if(!fromPlayTrack){
     currentIndex = Math.floor(Math.random() * currentPlaylist.length);
     playTrack(currentIndex);
   }
 }
 
 // Next / Previous buttons
-nextBtn.addEventListener("click", () => {
-  currentIndex = (currentIndex + 1) % currentPlaylist.length;
+nextBtn.addEventListener("click", ()=>{
+  currentIndex = (currentIndex+1)%currentPlaylist.length;
   playTrack(currentIndex);
 });
-prevBtn.addEventListener("click", () => {
-  currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
+prevBtn.addEventListener("click", ()=>{
+  currentIndex = (currentIndex-1+currentPlaylist.length)%currentPlaylist.length;
   playTrack(currentIndex);
 });
 
-// Callback from native when ad completed
-window.onAdCompleted = function() {
-  console.log("Rewarded ad finished for playlist:", playlistLinkPlaying);
+// Called by native after ad finishes
+window.onAdCompleted = function(){
+  console.log("Rewarded ad finished, resuming playlist:", playlistLinkPlaying);
+  // Continue next song
   currentIndex = Math.floor(Math.random() * currentPlaylist.length);
   playTrack(currentIndex);
-}
+  // Preload next ad defensively
+  if(hasAndroidBridge()){
+    Android.preloadRewardedAd();
+  }
+};
 </script>
 </body>
 </html>
