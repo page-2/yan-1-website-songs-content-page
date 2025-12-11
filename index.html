@@ -11,104 +11,141 @@
     .playlist-card img { width:100%; border-radius:10px; margin-bottom:10px; }
     .playlist-card h3 { margin:5px 0; }
     .playlist-card p { font-size:14px; color:#555; }
-    #playerContainer { margin:20px auto; width:90%; max-width:700px; }
+    #playerContainer { margin:20px auto; width:90%; max-width:700px; text-align:center; }
+    #controls { margin:10px 0; }
+    #controls button { padding:10px 20px; margin:0 10px; border:none; border-radius:5px; cursor:pointer; background:#ff5500; color:white; font-size:16px; }
+    #backBtn { margin:10px; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; background:#555; color:white; font-size:14px; }
   </style>
 </head>
 <body>
 
 <h2 style="text-align:center; padding:10px;">SoundCloud Playlists</h2>
 <div id="playlistContainer"></div>
-<div id="playerContainer"></div>
+<div id="playerPage" style="display:none;">
+  <button id="backBtn">← Back</button>
+  <div id="playerContainer"></div>
+  <div id="controls">
+    <button id="prevBtn">⏮ Previous</button>
+    <button id="nextBtn">⏭ Next</button>
+  </div>
+</div>
 
 <script src="https://w.soundcloud.com/player/api.js"></script>
 <script>
-  const playlistContainer = document.getElementById("playlistContainer");
-  const playerContainer = document.getElementById("playerContainer");
+const playlistContainer = document.getElementById("playlistContainer");
+const playerPage = document.getElementById("playerPage");
+const playerContainer = document.getElementById("playerContainer");
+const backBtn = document.getElementById("backBtn");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
 
-  // Detect Android bridge for rewarded ads
-  function hasAndroidBridge(){
-    return (typeof Android !== 'undefined' && Android !== null);
-  }
+// Detect Android bridge for rewarded ads
+function hasAndroidBridge(){
+  return (typeof Android !== 'undefined' && Android !== null);
+}
 
-  let songCounter = 0; // count songs for rewarded ads
-  let widget; // SoundCloud widget object
+let songCounter = 0; // count songs for rewarded ads
+let widget; // SoundCloud widget object
+let currentPlaylist = []; // array of sound indexes
+let currentIndex = 0;   // current song index
 
-  // Load playlist data from data.json
-  fetch('data.json')
-    .then(response => response.json())
-    .then(playlists => {
-      // Display playlists
-      playlists.forEach((pl, idx) => {
-        const card = document.createElement("div");
-        card.className = "playlist-card";
-        card.innerHTML = `
-          <img src="${pl.image_url}" alt="${pl.title}">
-          <h3>${pl.title}</h3>
-          <p>${pl.description}</p>
-        `;
-        card.addEventListener("click", () => {
-          loadPlaylist(pl.playlist_link);
-        });
-        playlistContainer.appendChild(card);
+// Load playlist data from data.json
+fetch('data.json')
+  .then(response => response.json())
+  .then(playlists => {
+    playlists.forEach((pl) => {
+      const card = document.createElement("div");
+      card.className = "playlist-card";
+      card.innerHTML = `
+        <img src="${pl.image_url}" alt="${pl.title}">
+        <h3>${pl.title}</h3>
+        <p>${pl.description}</p>
+      `;
+      card.addEventListener("click", () => {
+        openPlaylistPage(pl.playlist_link);
       });
-    })
-    .catch(err => {
-      console.error("Error loading data.json:", err);
-      playlistContainer.innerHTML = "<p style='color:red;'>Failed to load playlists.</p>";
+      playlistContainer.appendChild(card);
     });
+  })
+  .catch(err => {
+    console.error("Error loading data.json:", err);
+    playlistContainer.innerHTML = "<p style='color:red;'>Failed to load playlists.</p>";
+  });
 
-  // Load and play selected playlist
-  function loadPlaylist(link) {
-    playerContainer.innerHTML = `
-      <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
-        allow="autoplay"
-        src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}">
-      </iframe>
-    `;
-    const iframe = document.getElementById("scPlayer");
-    widget = SC.Widget(iframe);
+// Open playlist in new "page" inside website
+function openPlaylistPage(link){
+  playlistContainer.style.display = "none";
+  playerPage.style.display = "block";
+  loadPlaylist(link);
+}
 
-    // When widget ready, start random play
-    widget.bind(SC.Widget.Events.READY, function() {
-      playRandomTrack();
+// Back to playlist selection
+backBtn.addEventListener("click", ()=>{
+  playerPage.style.display = "none";
+  playlistContainer.style.display = "block";
+  playerContainer.innerHTML = "";
+});
+
+// Load and play selected playlist
+function loadPlaylist(link) {
+  playerContainer.innerHTML = `
+    <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
+      allow="autoplay"
+      src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}">
+    </iframe>
+  `;
+  const iframe = document.getElementById("scPlayer");
+  widget = SC.Widget(iframe);
+
+  widget.bind(SC.Widget.Events.READY, function() {
+    widget.getSounds(function(sounds){
+      currentPlaylist = sounds.map((s,i)=>i);
+      currentIndex = Math.floor(Math.random()*currentPlaylist.length);
+      playTrack(currentIndex);
     });
+  });
 
-    // Detect song finish for autoplay + rewarded ads
-    widget.bind(SC.Widget.Events.FINISH, function() {
-      songCounter++;
-      if(songCounter % 5 === 0 && hasAndroidBridge()){
-        Android.requestRewardedAd(); // call native rewarded ad
-      }
-      playRandomTrack();
-    });
-  }
+  // Detect song finish to count and continue
+  widget.bind(SC.Widget.Events.FINISH, function() {
+    songCounter++;
+    if(songCounter % 5 === 0 && hasAndroidBridge()){
+      Android.requestRewardedAd();
+    }
+    currentIndex = Math.floor(Math.random()*currentPlaylist.length);
+    playTrack(currentIndex);
+  });
+}
 
-  // Play random track in playlist
-  function playRandomTrack() {
-    widget.getCurrentSoundIndex(function(currentIndex){
-      widget.getSounds(function(sounds){
-        const total = sounds.length;
-        if(total > 1){
-          let nextIndex;
-          do{
-            nextIndex = Math.floor(Math.random()*total);
-          } while(nextIndex === currentIndex);
-          widget.skip(nextIndex);
-        }
-        widget.play();
-      });
-    });
+// Play a track by index
+function playTrack(index){
+  currentIndex = index;
+  widget.skip(currentIndex);
+  widget.play();
+  songCounter++; // Count song even if skipped
+  if(songCounter % 5 === 0 && hasAndroidBridge()){
+    Android.requestRewardedAd();
   }
+}
 
-  // Preload rewarded ad on app load (optional)
-  if(hasAndroidBridge()){
-    Android.preloadRewardedAd();
-  }
+// Next / Previous buttons
+nextBtn.addEventListener("click", ()=>{
+  currentIndex = (currentIndex+1)%currentPlaylist.length;
+  playTrack(currentIndex);
+});
+prevBtn.addEventListener("click", ()=>{
+  currentIndex = (currentIndex-1+currentPlaylist.length)%currentPlaylist.length;
+  playTrack(currentIndex);
+});
 
-  // Optional callback when ad completed
-  window.onAdCompleted = function(targetUrl){
-    console.log("Rewarded ad finished for playlist: ", targetUrl);
-  }
+// Preload rewarded ad on app load
+if(hasAndroidBridge()){
+  Android.preloadRewardedAd();
+}
+
+// Callback after ad
+window.onAdCompleted = function(targetUrl){
+  console.log("Rewarded ad finished for playlist: ", targetUrl);
+}
 
 </script>
 </body>
