@@ -40,27 +40,27 @@ const backBtn = document.getElementById("backBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-// Detect Android bridge for rewarded ads
-function hasAndroidBridge(){
+// Detect Android bridge
+function hasAndroidBridge() {
   return (typeof Android !== 'undefined' && Android !== null);
 }
 
-let songCounter = 0;          // Count songs for rewarded ads
-let widget;                    // SoundCloud widget object
-let currentPlaylist = [];      // Array of sound indexes
-let currentIndex = 0;          // Current song index
-let playlistLinkPlaying = '';  // Keep track of current playlist link
+let songCounter = 0;          // count songs
+let widget;                    // SoundCloud widget
+let currentPlaylist = [];      // array of track indexes
+let currentIndex = 0;          // current track index
+let playlistLinkPlaying = '';  // current playlist URL
 
-// Send preload ad request when user enters the website
-if(hasAndroidBridge()){
+// Preload rewarded ad when app opens
+if (hasAndroidBridge()) {
   Android.preloadRewardedAd();
 }
 
-// Load playlist data from data.json
+// Load playlists from data.json
 fetch('data.json')
   .then(res => res.json())
   .then(playlists => {
-    playlists.forEach((pl) => {
+    playlists.forEach(pl => {
       const card = document.createElement("div");
       card.className = "playlist-card";
       card.innerHTML = `
@@ -77,8 +77,8 @@ fetch('data.json')
     playlistContainer.innerHTML = "<p style='color:red;'>Failed to load playlists.</p>";
   });
 
-// Open playlist in "page" inside website
-function openPlaylistPage(link){
+// Open playlist page
+function openPlaylistPage(link) {
   playlistContainer.style.display = "none";
   playerPage.style.display = "block";
   playlistLinkPlaying = link;
@@ -86,14 +86,14 @@ function openPlaylistPage(link){
 }
 
 // Back button
-backBtn.addEventListener("click", ()=>{
+backBtn.addEventListener("click", () => {
   playerPage.style.display = "none";
   playlistContainer.style.display = "block";
   playerContainer.innerHTML = "";
 });
 
-// Load and play playlist
-function loadPlaylist(link){
+// Load playlist in SoundCloud widget
+function loadPlaylist(link) {
   playerContainer.innerHTML = `
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
       allow="autoplay"
@@ -103,77 +103,68 @@ function loadPlaylist(link){
   const iframe = document.getElementById("scPlayer");
   widget = SC.Widget(iframe);
 
-  widget.bind(SC.Widget.Events.READY, function(){
+  widget.bind(SC.Widget.Events.READY, function() {
     widget.getSounds(function(sounds){
       currentPlaylist = sounds.map((s,i)=>i);
-      currentIndex = Math.floor(Math.random()*currentPlaylist.length);
+      currentIndex = Math.floor(Math.random() * currentPlaylist.length);
       playTrack(currentIndex);
     });
   });
 
-  // Count song when finished
+  // Count every song finished
   widget.bind(SC.Widget.Events.FINISH, function(){
-    handleSongCompletion();
+    handleSongCompletion(false);
   });
 }
 
-// Handles song play & rewarded ad logic
-function playTrack(index){
+// Play a track by index
+function playTrack(index) {
   currentIndex = index;
   widget.skip(currentIndex);
   widget.play();
 
-  // Count song even if skipped
+  // Count song immediately
   handleSongCompletion(true);
 }
 
 // Handle song completion / skip
-function handleSongCompletion(fromPlayTrack=false){
-  // Only increment counter once per song
-  if(!fromPlayTrack || fromPlayTrack){
+function handleSongCompletion(fromPlayTrack=false) {
+  // Increment counter once per track
+  if (fromPlayTrack || !fromPlayTrack) {
     songCounter++;
   }
 
   // Check if 5 songs reached
-  if(songCounter >= 5 && hasAndroidBridge()){
-    // Pause current song
-    widget.pause();
-
-    // Call rewarded ad from native code
-    Android.requestRewardedAd();
-
-    // Reset song counter after ad
-    songCounter = 0;
-
-    // Wait for ad callback before continuing playback
-    return;
+  if (songCounter >= 5 && hasAndroidBridge()) {
+    widget.pause();                // pause current song
+    Android.requestRewardedAd();   // tell native to play ad
+    songCounter = 0;               // reset counter
+    return;                        // wait for ad completion
   }
 
-  // Random next track if called from FINISH
-  if(!fromPlayTrack){
-    currentIndex = Math.floor(Math.random()*currentPlaylist.length);
+  // Auto-play next track if called from FINISH
+  if (!fromPlayTrack) {
+    currentIndex = Math.floor(Math.random() * currentPlaylist.length);
     playTrack(currentIndex);
   }
 }
 
 // Next / Previous buttons
-nextBtn.addEventListener("click", ()=>{
-  currentIndex = (currentIndex+1)%currentPlaylist.length;
+nextBtn.addEventListener("click", () => {
+  currentIndex = (currentIndex + 1) % currentPlaylist.length;
   playTrack(currentIndex);
 });
-prevBtn.addEventListener("click", ()=>{
-  currentIndex = (currentIndex-1+currentPlaylist.length)%currentPlaylist.length;
+prevBtn.addEventListener("click", () => {
+  currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
   playTrack(currentIndex);
 });
 
-// Callback after ad finished
-window.onAdCompleted = function(targetUrl){
+// Callback from native when ad completed
+window.onAdCompleted = function() {
   console.log("Rewarded ad finished for playlist:", playlistLinkPlaying);
-  // Continue playing next random song
-  currentIndex = Math.floor(Math.random()*currentPlaylist.length);
+  currentIndex = Math.floor(Math.random() * currentPlaylist.length);
   playTrack(currentIndex);
 }
-
 </script>
 </body>
 </html>
