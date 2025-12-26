@@ -5,22 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SoundCloud</title>
 <style>
+  /* ---------- General ---------- */
   body {
-    font-family: Arial, sans-serif;
-    background: #f5f5f5;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f2f5f9;          /* soft, low‑contrast background */
+    color: #333;                  /* dark‑gray text – easier on the eyes */
     margin: 0;
     padding: 0;
     min-height: 100vh;
     position: relative;
   }
+  a { color: #ff7043; text-decoration: underline; }
+
+  /* ---------- Header ---------- */
   h2.title {
-    text-align: center;
-    margin-top: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: .5rem;
+    margin-top: 12px;
     font-size: 2rem;
-    gap: 0.5rem;
+    color: #2c3e50;               /* slightly muted heading colour */
+  }
+  p.under-title {
+    text-align: center;
+    margin: 4px 0 6px;
+    font-size: 1.1rem;
+    color: #555;
   }
   .subheading {
     text-align: center;
@@ -30,17 +41,20 @@
     -webkit-background-clip: text;
     color: transparent;
   }
+
+  /* ---------- Playlist Grid ---------- */
   #playlistContainer {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
   .playlist-card {
+    position: relative;               /* needed for badge & share button */
     display: flex;
     flex-direction: column;
     align-items: center;
     margin: 15px auto;
-    background: white;
+    background: #fff;
     border-radius: 10px;
     padding: 15px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.1);
@@ -48,28 +62,31 @@
     max-width: 400px;
     cursor: pointer;
     transition: transform .2s;
-    position: relative;
   }
-  .playlist-card:hover {
-    transform: scale(1.03);
+  .playlist-card:hover { transform: scale(1.03); }
+  .playlist-card img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
+  .playlist-card h3 { margin: 5px 0; }
+  .playlist-card p { font-size: 14px; color: #555; }
+
+  /* ID badge (top‑left) */
+  .id-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ff7043;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 2px 5px;
   }
-  .playlist-card img {
-    width: 100%;
-    border-radius: 10px;
-    margin-bottom: 10px;
-  }
-  .playlist-card h3 {
-    margin: 5px 0;
-  }
-  .playlist-card p {
-    font-size: 14px;
-    color: #555;
-  }
+
+  /* Share button (top‑right) */
   .share-btn {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.5);
     color: #fff;
     border: none;
     border-radius: 50%;
@@ -81,40 +98,33 @@
     cursor: pointer;
     font-size: 16px;
   }
-  #playerPage {
-    display: none;
-    text-align: center;
-  }
-  #playerContainer {
-    margin: 20px auto;
-    width: 90%;
-    max-width: 700px;
-    text-align: center;
-  }
-  #controls {
-    margin: 10px 0;
-  }
+
+  /* ---------- Player Page ---------- */
+  #playerPage { display: none; text-align: center; }
+  #playerContainer { margin: 20px auto; width: 90%; max-width: 700px; }
+  #controls { margin: 10px 0; }
   #controls button {
     padding: 10px 20px;
     margin: 0 10px;
     border: none;
     border-radius: 5px;
-    cursor: pointer;
-    background: #ff5500;
-    color: white;
+    background: #ff7043;        /* softer orange */
+    color: #fff;
     font-size: 16px;
+    cursor: pointer;
   }
   #backBtn {
     margin: 10px;
     padding: 8px 15px;
     border: none;
     border-radius: 5px;
-    cursor: pointer;
     background: #555;
-    color: white;
+    color: #fff;
     font-size: 14px;
+    cursor: pointer;
   }
-  /* floating chat icon */
+
+  /* ---------- Floating Chat Icon ---------- */
   #chatFloating {
     position: fixed;
     right: 20px;
@@ -123,7 +133,8 @@
     cursor: pointer;
     z-index: 1000;
   }
-  /* modal */
+
+  /* ---------- Modal ---------- */
   .modal {
     display: none;
     position: fixed;
@@ -141,31 +152,18 @@
     max-width: 90%;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
-  .modal-content p {
-    margin: 10px 0;
-  }
-  .modal-content a {
-    color: #ff5500;
-    text-decoration: underline;
-  }
+  .modal-content p { margin: 10px 0; }
+
+  /* ---------- Footer ---------- */
   .footer {
     text-align: center;
     padding: 10px 0;
-    background: #e0e0e0;
+    background: #dfe4ea;
     margin-top: 40px;
-    font-size: 0.9rem;
+    font-size: .9rem;
   }
-  .center-highlight {
-    position: fixed;
-    left: 50%;
-    bottom: 160px;
-    transform: translateX(-50%);
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #ff5500;
-    text-shadow: 0 0 5px rgba(255,85,0,0.8);
-    pointer-events: none;
-  }
+
+  /* ---------- Toast ---------- */
   #toast {
     position: fixed;
     bottom: 20px;
@@ -185,6 +183,7 @@
 <body>
 
 <h2 class="title">SoundCloud <span>🎧</span></h2>
+<p class="under-title">Every song has a place.</p>
 <p class="subheading">A home for every song and every soul — explore music beyond limits, across languages, moods, and moments.</p>
 
 <div id="playlistContainer"></div>
@@ -197,8 +196,6 @@
     <button id="nextBtn">⏭ Next</button>
   </div>
 </div>
-
-<div class="center-highlight">Every song has a place.</div>
 
 <div id="chatFloating">💬</div>
 
@@ -218,169 +215,153 @@
 <script>
 /* ---------- Global Variables ---------- */
 const playlistContainer = document.getElementById('playlistContainer');
-const playerPage   = document.getElementById('playerPage');
-const playerContainer = document.getElementById('playerContainer');
-const backBtn      = document.getElementById('backBtn');
-const prevBtn      = document.getElementById('prevBtn');
-const nextBtn      = document.getElementById('nextBtn');
-const chatFloating = document.getElementById('chatFloating');
-const feedbackModal = document.getElementById('feedbackModal');
-const countdownElm = document.getElementById('countdown');
-const toastElm     = document.getElementById('toast');
+const playerPage        = document.getElementById('playerPage');
+const playerContainer  = document.getElementById('playerContainer');
+const backBtn          = document.getElementById('backBtn');
+const prevBtn          = document.getElementById('prevBtn');
+const nextBtn          = document.getElementById('nextBtn');
+const chatFloating     = document.getElementById('chatFloating');
+const feedbackModal    = document.getElementById('feedbackModal');
+const countdownElm     = document.getElementById('countdown');
+const toastElm         = document.getElementById('toast');
 
-let widget = null;
-let currentPlaylist = [];   // array of sound objects
-let currentIndex = 0;
-let allPlaylists = [];      // fetched from data.json
-const SHARE_REDIRECT_BASE = 'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
+let widget          = null;          // SoundCloud widget instance
+let currentPlaylist = [];           // array of sound objects for the opened playlist
+let currentIndex    = 0;
+let allPlaylists    = [];           // data from data.json
+const SHARE_REDIRECT_BASE = 
+  'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
 
 /* ---------- Helper Functions ---------- */
-function showToast(msg) {
+function showToast(msg){
   toastElm.textContent = msg;
   toastElm.style.display = 'block';
   toastElm.style.opacity = '1';
-  setTimeout(() => {
+  setTimeout(()=> {
     toastElm.style.opacity = '0';
-    setTimeout(() => toastElm.style.display = 'none', 500);
+    setTimeout(()=> toastElm.style.display = 'none', 500);
   }, 3000);
 }
-
-function copyToClipboard(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
+function copyToClipboard(text){
+  if (navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text)
-      .then(() => showToast('Link copied to clipboard!'))
-      .catch(() => showToast('Failed to copy link.'));
+      .then(()=> showToast('Link copied to clipboard!'))
+      .catch(()=> showToast('Failed to copy link.'));
   } else {
-    // fallback
     const textarea = document.createElement('textarea');
     textarea.value = text;
     textarea.style.position = 'fixed';
     document.body.appendChild(textarea);
     textarea.focus();
     textarea.select();
-    try {
+    try{
       document.execCommand('copy');
       showToast('Link copied to clipboard!');
-    } catch (err) {
+    }catch(e){
       showToast('Failed to copy link.');
     }
     document.body.removeChild(textarea);
   }
 }
-
-/* Share logic */
-function sharePlaylist(pl) {
+function sharePlaylist(pl){
   const shareLink = SHARE_REDIRECT_BASE + encodeURIComponent(pl.id);
-  if (navigator.share) {
-    navigator.share({
-      title: pl.title,
-      url: shareLink
-    }).catch(err => console.warn('Share cancelled', err));
+  if (navigator.share){
+    navigator.share({ title: pl.title, url: shareLink })
+      .catch(err=> console.warn('Share cancelled', err));
   } else {
     copyToClipboard(shareLink);
   }
 }
 
 /* ---------- UI Rendering ---------- */
-function renderPlaylists() {
+function renderPlaylists(){
   playlistContainer.innerHTML = '';
   allPlaylists.forEach(pl => {
     const card = document.createElement('div');
     card.className = 'playlist-card';
     card.innerHTML = `
+      <span class="id-badge">ID: ${pl.id}</span>
+      <button class="share-btn" title="Share">🔗</button>
       <img src="${pl.image_url}" alt="${pl.title}">
       <h3>${pl.title}</h3>
       <p>${pl.description}</p>
-      <button class="share-btn" title="Share">🔗</button>
     `;
 
-    // Click on card (except share button) -> open player
+    // open player when clicking anywhere except the share button
     card.addEventListener('click', e => {
       if (e.target.classList.contains('share-btn')) return;
       openPlaylistPage(pl.playlist_link);
     });
 
-    // Share button
-    const shareBtn = card.querySelector('.share-btn');
-    shareBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      sharePlaylist(pl);
-    });
+    // share button
+    card.querySelector('.share-btn')
+        .addEventListener('click', e => {
+          e.stopPropagation();
+          sharePlaylist(pl);
+        });
 
     playlistContainer.appendChild(card);
   });
 }
 
 /* ---------- Player Logic ---------- */
-function openPlaylistPage(link) {
-  // hide carousel / playlist list, show player UI
+function openPlaylistPage(link){
   playlistContainer.style.display = 'none';
-  playerPage.style.display = 'block';
+  playerPage.style.display      = 'block';
   loadPlaylist(link);
 }
-
 backBtn.addEventListener('click', () => {
-  playerPage.style.display = 'none';
+  playerPage.style.display      = 'none';
   playlistContainer.style.display = 'block';
-  playerContainer.innerHTML = '';
-  // Reset widget reference
+  playerContainer.innerHTML     = '';
   widget = null;
 });
-
-function loadPlaylist(link) {
+function loadPlaylist(link){
   playerContainer.innerHTML = `
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
-      allow="autoplay"
-      src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}">
-    </iframe>
-  `;
+            allow="autoplay"
+            src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}">
+    </iframe>`;
   const iframe = document.getElementById('scPlayer');
   widget = SC.Widget(iframe);
 
   widget.bind(SC.Widget.Events.READY, () => {
     widget.getSounds(sounds => {
-      currentPlaylist = sounds;               // keep the sound objects
-      // start at a random track
+      currentPlaylist = sounds;
+      // start on a random track
       currentIndex = Math.floor(Math.random() * sounds.length);
       playTrack(currentIndex);
     });
   });
-
-  // When a track finishes naturally, pick another random track
   widget.bind(SC.Widget.Events.FINISH, () => {
+    // after a track ends, pick another random one
     const nextIdx = Math.floor(Math.random() * currentPlaylist.length);
     playTrack(nextIdx);
   });
 }
-
-function playTrack(idx) {
+function playTrack(idx){
   currentIndex = idx;
   widget.skip(currentIndex);
   widget.play();
 }
-
-/* Next / Previous buttons */
 nextBtn.addEventListener('click', () => {
   if (!currentPlaylist.length) return;
   currentIndex = (currentIndex + 1) % currentPlaylist.length;
   playTrack(currentIndex);
 });
-
 prevBtn.addEventListener('click', () => {
   if (!currentPlaylist.length) return;
   currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
   playTrack(currentIndex);
 });
 
-/* ---------- URL Parameter Handling ---------- */
-function initFromURL() {
+/* ---------- URL handling (shared link) ---------- */
+function initFromURL(){
   const params = new URLSearchParams(window.location.search);
-  const pid = params.get('playlist_id');
-  if (pid) {
+  const pid    = params.get('playlist_id');
+  if (pid){
     const pl = allPlaylists.find(p => String(p.id) === pid);
-    if (pl) {
-      openPlaylistPage(pl.playlist_link);
-    }
+    if (pl) openPlaylistPage(pl.playlist_link);
   }
 }
 
@@ -391,9 +372,9 @@ chatFloating.addEventListener('click', () => {
   countdownElm.textContent = remaining;
   const interval = setInterval(() => {
     remaining--;
-    if (remaining > 0) {
+    if (remaining > 0){
       countdownElm.textContent = remaining;
-    } else {
+    }else{
       clearInterval(interval);
       feedbackModal.style.display = 'none';
       window.location.href = 'https://github.com/OpenThoughtVoice/OpenThoughtVoice/discussions/5';
@@ -401,14 +382,14 @@ chatFloating.addEventListener('click', () => {
   }, 1000);
 });
 
-/* ---------- Data Loading ---------- */
+/* ---------- Data Load ---------- */
 fetch('data.json')
   .then(r => r.json())
   .then(data => {
-    allPlaylists = data; // expect each entry to contain at least id, title, description, image_url, playlist_link
+    allPlaylists = data;            // each object should contain at least: id, title, description,
+                                    // image_url, playlist_link
     renderPlaylists();
-    // After rendering we can react to a possible playlist_id in the URL
-    initFromURL();
+    initFromURL();                  // respond to possible ?playlist_id=XYZ
   })
   .catch(err => {
     console.error('Failed to load data.json', err);
