@@ -3,28 +3,28 @@
     "id": "1",
     "title": "Testing Playlist 1",
     "description": "My first playlist",
-    "image_url": "https://i1.sndcdn.com/artworks-000123456789-abcde-large.jpg",
+    "image_url": "https://archive.org/embed/sides_202512",
     "playlist_link": "https://soundcloud.com/yan-shun-335725597/sets/testing1?si=4a92d5f1fcc44ef28458ce4ee82b754a&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing"
   },
   {
     "id": "2",
     "title": "Imagine Dragons Remix",
     "description": "Believer remix playlist",
-    "image_url": "https://i1.sndcdn.com/artworks-000987654321-fghij-large.jpg",
+    "image_url": "https://archive.org/details/ben-10_202510",
     "playlist_link": "https://soundcloud.com/joaofaria/sets/remix1"
   },
   {
     "id": "3",
     "title": "Chill Vibes",
     "description": "Relaxing chill music",
-    "image_url": "https://i1.sndcdn.com/artworks-000567890123-klmno-large.jpg",
+    "image_url": "https://archive.org/details/sides_202512/panda.png",
     "playlist_link": "https://soundcloud.com/user123/sets/chill-vibes"
   },
   {
     "id": "4",
     "title": "Top Hits 2025",
     "description": "Latest trending hits",
-    "image_url": "https://i1.sndcdn.com/artworks-000234567890-pqrst-large.jpg",
+    "image_url": "https://dn720704.ca.archive.org/0/items/ben-10_202510/ben%2010.jpeg",
     "playlist_link": "https://soundcloud.com/user456/sets/top-hits-2025"
   }
 ]
