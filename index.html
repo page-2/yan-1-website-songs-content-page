@@ -48,16 +48,14 @@
 
   /* Home button */
   #homeButton {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 1.5rem;
+    display: block;
+    text-align: center;
+    font-size: 2rem;
     cursor: pointer;
-    z-index: 100;
     background: none;
     border: none;
     color: white;
+    margin: 10px 0;
   }
 
   /* Live‑Radio button */
@@ -467,6 +465,17 @@ function setPlayMode(mode){
   orderModeBtn.classList.toggle('active', mode==='order');
 }
 
+// Function to convert archive.org details URL to embed image URL
+function convertToEmbedImageUrl(detailsUrl) {
+  // Extract identifier from URL (everything after /details/)
+  const parts = detailsUrl.split('/details/');
+  if (parts.length < 2) return detailsUrl;
+  
+  const identifier = parts[1].split('?')[0].split('#')[0]; // Remove query params and fragments
+  // Construct embed image URL
+  return `https://archive.org/services/img/${identifier}`;
+}
+
 /* ---------- UI Rendering ---------- */
 function renderPlaylists(){
   playlistContainer.innerHTML = '';
@@ -477,7 +486,7 @@ function renderPlaylists(){
       <span class="id-badge">ID: ${pl.id}</span>
       <button class="share-btn" title="Share">🔗</button>
       <button class="archive-btn" title="GameVault">⛶</button>
-      <img src="${pl.image_url}" alt="${pl.title}">
+      <img src="${convertToEmbedImageUrl(pl.image_url)}" alt="${pl.title}">
       <h3>${pl.title}</h3>
       <p>${pl.description}</p>
       <button class="open-btn">Open</button>
@@ -500,7 +509,8 @@ function renderPlaylists(){
     card.querySelector('.archive-btn')
         .addEventListener('click', e=>{
           e.stopPropagation();
-          openImageFullscreen(pl.image_url);
+          const embedImageUrl = convertToEmbedImageUrl(pl.image_url);
+          openImageFullscreen(embedImageUrl);
         });
 
     playlistContainer.appendChild(card);
