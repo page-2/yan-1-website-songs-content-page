@@ -99,19 +99,6 @@
     display: none;
   }
 
-  /* Live‑Radio button */
-  .live-radio-btn{
-    display:block;
-    margin:12px auto;
-    padding:8px 20px;
-    border:none;
-    border-radius:5px;
-    background:#ff7043;
-    color:#fff;
-    font-size:1rem;
-    cursor:pointer;
-  }
-
   /* ---------- Playlist Grid ---------- */
   #playlistContainer{
     display:flex;
@@ -254,17 +241,6 @@
     color:#fff;
   }
 
-  /* ---------- Floating Chat Icon ---------- */
-  #chatFloating{
-    position:fixed;
-    right:20px;
-    bottom:80px;
-    font-size:2rem;
-    cursor:pointer;
-    z-index:1000;
-    color:#fff;
-  }
-
   /* ---------- Modal (feedback) ---------- */
   .modal{
     display:none;
@@ -284,31 +260,6 @@
     box-shadow:0 5px 15px rgba(0,0,0,0.3);
   }
   .modal-content p{ margin:10px 0; }
-
-  /* ---------- Live‑Radio Overlay ---------- */
-  #liveRadioOverlay{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:#000;
-    z-index:5000;
-  }
-  #liveRadioOverlay iframe{
-    width:100%;
-    height:100%;
-    border:none;
-  }
-  #closeLiveRadio{
-    position:absolute;
-    top:12px;
-    right:12px;
-    font-size:2rem;
-    background:transparent;
-    color:#fff;
-    border:none;
-    cursor:pointer;
-    z-index:5100;
-  }
 
   /* ---------- Footer ---------- */
   .footer{
@@ -391,17 +342,16 @@
   <button id="backButton">Back</button>
 </div>
 
-<button id="liveRadioBtn" class="live-radio-btn">Live Radio</button>
-
 <div id="playlistContainer"></div>
 
 <div id="playerPage">
   <button id="backBtn">← Back</button>
 
-  <!-- Random / Order options – only visible after a playlist is opened -->
+  <!-- Random / Order / Repeat options – only visible after a playlist is opened -->
   <div id="modeContainer">
     <button id="randomModeBtn" class="mode-btn">Random</button>
     <button id="orderModeBtn" class="mode-btn">Order</button>
+    <button id="repeatModeBtn" class="mode-btn">Repeat</button>
   </div>
 
   <div id="playerContainer"></div>
@@ -411,20 +361,12 @@
   </div>
 </div>
 
-<div id="chatFloating">💬</div>
-
 <div id="feedbackModal" class="modal">
   <div class="modal-content">
     <p>🔐 Login or sign up with GitHub to give the feedback.</p>
     <p>📺 Or click the video link <a href="https://archive.org/details/panfda" target="_blank">here</a> to know how to give feedback.</p>
     <p>Redirecting in <span id="countdown">5</span> seconds...</p>
   </div>
-</div>
-
-<!-- Live‑Radio fullscreen overlay -->
-<div id="liveRadioOverlay">
-  <button id="closeLiveRadio">✖</button>
-  <iframe id="liveRadioIframe" src=""></iframe>
 </div>
 
 <!-- Fullscreen container for images -->
@@ -446,16 +388,12 @@ const playerContainer   = document.getElementById('playerContainer');
 const backBtn           = document.getElementById('backBtn');
 const prevBtn           = document.getElementById('prevBtn');
 const nextBtn           = document.getElementById('nextBtn');
-const chatFloating      = document.getElementById('chatFloating');
 const feedbackModal     = document.getElementById('feedbackModal');
 const countdownElm      = document.getElementById('countdown');
 const toastElm          = document.getElementById('toast');
 const randomModeBtn     = document.getElementById('randomModeBtn');
 const orderModeBtn      = document.getElementById('orderModeBtn');
-const liveRadioBtn      = document.getElementById('liveRadioBtn');
-const liveRadioOverlay  = document.getElementById('liveRadioOverlay');
-const closeLiveRadioBtn = document.getElementById('closeLiveRadio');
-const liveRadioIframe   = document.getElementById('liveRadioIframe');
+const repeatModeBtn     = document.getElementById('repeatModeBtn');
 const modeContainer     = document.getElementById('modeContainer');
 const homeButton        = document.getElementById('homeButton');
 const fullscreenContainer = document.getElementById('fullscreenContainer');
@@ -522,6 +460,7 @@ function setPlayMode(mode){
   playMode = mode;
   randomModeBtn.classList.toggle('active', mode==='random');
   orderModeBtn.classList.toggle('active', mode==='order');
+  repeatModeBtn.classList.toggle('active', mode==='repeat');
 }
 
 // Function to convert archive.org details URL to embed image URL
@@ -620,7 +559,7 @@ function renderPlaylists(){
 function openPlaylistPage(link){
   playlistContainer.style.display = 'none';
   playerPage.style.display = 'block';
-  modeContainer.style.display = 'block';      // show Random/Order options
+  modeContainer.style.display = 'block';      // show Random/Order/Repeat options
   loadPlaylist(link);
 }
 backBtn.addEventListener('click', ()=>{
@@ -652,7 +591,10 @@ function loadPlaylist(link){
 
   widget.bind(SC.Widget.Events.FINISH, ()=>{
     if(!currentPlaylist.length) return;
-    if(playMode==='random'){
+    if(playMode==='repeat'){
+      // In repeat mode, replay the same track
+      playTrack(currentIndex);
+    }else if(playMode==='random'){
       const nextIdx = Math.floor(Math.random()*currentPlaylist.length);
       playTrack(nextIdx);
     }else{
@@ -668,7 +610,10 @@ function playTrack(idx){
 }
 nextBtn.addEventListener('click', ()=>{
   if(!currentPlaylist.length) return;
-  if(playMode==='random'){
+  if(playMode==='repeat'){
+    // In repeat mode, replay the same track
+    playTrack(currentIndex);
+  }else if(playMode==='random'){
     const nextIdx = Math.floor(Math.random()*currentPlaylist.length);
     playTrack(nextIdx);
   }else{
@@ -678,7 +623,10 @@ nextBtn.addEventListener('click', ()=>{
 });
 prevBtn.addEventListener('click', ()=>{
   if(!currentPlaylist.length) return;
-  if(playMode==='random'){
+  if(playMode==='repeat'){
+    // In repeat mode, replay the same track
+    playTrack(currentIndex);
+  }else if(playMode==='random'){
     const prevIdx = Math.floor(Math.random()*currentPlaylist.length);
     playTrack(prevIdx);
   }else{
@@ -698,7 +646,7 @@ function initFromURL(){
 }
 
 /* ---------- Feedback Modal ---------- */
-chatFloating.addEventListener('click', ()=>{
+feedbackModal.addEventListener('click', ()=>{
   feedbackModal.style.display = 'flex';
   let remaining = 5;
   countdownElm.textContent = remaining;
@@ -717,19 +665,8 @@ chatFloating.addEventListener('click', ()=>{
 /* ---------- Mode Buttons ---------- */
 randomModeBtn.addEventListener('click', ()=>setPlayMode('random'));
 orderModeBtn.addEventListener('click', ()=>setPlayMode('order'));
+repeatModeBtn.addEventListener('click', ()=>setPlayMode('repeat'));
 setPlayMode(playMode);  // initialise active state
-
-/* ---------- Live Radio (fullscreen iframe) ---------- */
-liveRadioBtn.addEventListener('click', ()=>{
-  liveRadioIframe.src = 'live_radio.html';
-  liveRadioOverlay.style.display = 'block';
-  document.body.style.overflow = 'hidden';
-});
-closeLiveRadioBtn.addEventListener('click', ()=>{
-  liveRadioIframe.src = '';
-  liveRadioOverlay.style.display = 'none';
-  document.body.style.overflow = '';
-});
 
 /* ---------- Home Button ---------- */
 homeButton.addEventListener('click', () => {
