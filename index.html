@@ -58,6 +58,43 @@
     margin:10px 0;
   }
 
+  /* ---------- Global Search Bar (outside playlists) ---------- */
+  #searchContainer{
+    display:flex;
+    justify-content:center;
+    margin:15px 0;
+    gap:10px;
+  }
+  #searchInput{
+    padding:8px 12px;
+    border-radius:5px;
+    border:1px solid #ccc;
+    width:200px;
+  }
+  #searchButton{
+    padding:8px 15px;
+    background:#ff7043;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+  }
+  #searchType{
+    padding:8px;
+    border-radius:5px;
+    border:1px solid #ccc;
+  }
+  #backButton{
+    padding:8px 15px;
+    background:#555;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    margin-left:10px;
+    display:none;
+  }
+
   /* ---------- Playlist Grid ---------- */
   #playlistContainer{
     display:flex;
@@ -139,7 +176,7 @@
     cursor:pointer;
   }
 
-  /* ---------- Player Page ---------- */
+  /* ---------- Player Page (no inner search bar) ---------- */
   #playerPage{display:none;text-align:center;}
   #modeContainer{
     text-align:center;
@@ -172,30 +209,6 @@
     background:#555;
     color:#fff;
     font-size:14px;
-    cursor:pointer;
-  }
-
-  /* Player Search */
-  #playerSearchContainer{
-    display:flex;
-    justify-content:center;
-    margin:12px 0;
-    gap:10px;
-  }
-  #playerSearchInput{
-    padding:8px 12px;
-    border-radius:5px;
-    border:1px solid #ccc;
-    width:250px;
-    background:#1e293b;
-    color:white;
-  }
-  #playerSearchButton{
-    padding:8px 15px;
-    background:#ff7043;
-    color:white;
-    border:none;
-    border-radius:5px;
     cursor:pointer;
   }
 
@@ -303,10 +316,19 @@
 <p class="under-title">Every song has a place.</p>
 <p class="subheading">A home for every song and every soul — explore music beyond limits, across languages, moods, and moments.</p>
 
-<!-- Playlist Grid -->
+<!-- Global Search Bar (outside playlists) -->
+<div id="searchContainer">
+  <input type="text" id="searchInput" placeholder="Search...">
+  <select id="searchType">
+    <option value="title">Title</option>
+    <option value="id">ID</option>
+  </select>
+  <button id="searchButton">Search</button>
+  <button id="backButton">Back</button>
+</div>
+
 <div id="playlistContainer"></div>
 
-<!-- Player Page -->
 <div id="playerPage">
   <button id="backBtn">← Back</button>
 
@@ -314,11 +336,6 @@
     <button id="randomModeBtn" class="mode-btn">Random</button>
     <button id="orderModeBtn" class="mode-btn">Order</button>
     <button id="repeatModeBtn" class="mode-btn">Repeat</button>
-  </div>
-
-  <div id="playerSearchContainer">
-    <input type="text" id="playerSearchInput" placeholder="Search song in playlist...">
-    <button id="playerSearchButton">Search</button>
   </div>
 
   <div id="playerContainer"></div>
@@ -329,7 +346,6 @@
   </div>
 </div>
 
-<!-- Feedback Modal -->
 <div id="feedbackModal" class="modal">
   <div class="modal-content">
     <p>🔐 Login or sign up with GitHub to give the feedback.</p>
@@ -338,7 +354,6 @@
   </div>
 </div>
 
-<!-- Fullscreen Image -->
 <div id="fullscreenContainer">
   <button id="closeFullscreen">✖</button>
   <img id="fullscreenImage" src="" alt="Fullscreen Image">
@@ -369,17 +384,19 @@ const fullscreenContainer = document.getElementById('fullscreenContainer');
 const fullscreenImage     = document.getElementById('fullscreenImage');
 const closeFullscreen     = document.getElementById('closeFullscreen');
 
-const playerSearchInput   = document.getElementById('playerSearchInput');
-const playerSearchButton  = document.getElementById('playerSearchButton');
+const searchInput        = document.getElementById('searchInput');
+const searchButton       = document.getElementById('searchButton');
+const searchType         = document.getElementById('searchType');
+const backButton         = document.getElementById('backButton');
 
 let widget               = null;          // SoundCloud widget
 let currentPlaylist      = [];           // array of tracks
 let currentIndex         = 0;
-let allPlaylists         = [];           // data.json
-let playMode             = 'order';      // default
-let filteredPlaylists    = [];           // for rendering (no external search now)
-let autoOpenPlaylistId1 = false;        // open ID 1 on first load
-let playlistLoadedReady  = false;        // set when widget data is ready
+let allPlaylists         = [];           // loaded from data.json
+let playMode             = 'order';      // default mode
+let filteredPlaylists    = [];           // for global playlist rendering
+let autoOpenPlaylistId1  = false;        // auto‑open ID 1 if no URL param
+let playlistLoadedReady  = false;        // set when widget metadata is ready
 
 const SHARE_REDIRECT_BASE =
   'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
@@ -401,7 +418,7 @@ function showToast(msg){
   toastElm.style.opacity = '1';
   setTimeout(()=>{
     toastElm.style.opacity = '0';
-    setTimeout(()=> toastElm.style.display='none',500);
+    setTimeout(()=>toastElm.style.display='none',500);
   },3000);
 }
 function copyToClipboard(text){
@@ -441,36 +458,32 @@ function convertToEmbedImageUrl(detailsUrl){
   return `https://archive.org/services/img/${identifier}`;
 }
 
-/* ---------- Player‑only Search (song title only) ---------- */
-function searchInPlaylist(){
-  const rawTerm = playerSearchInput.value.trim();
-  if (!rawTerm){
-    showToast('Please enter a song name');
-    return;
-  }
-  if (!playlistLoadedReady || !currentPlaylist.length){
-    showToast('Playlist not ready yet');
-    return;
-  }
-  const term = normalizeText(rawTerm);
-  const foundIndex = currentPlaylist.findIndex(track=>{
-    if (!track.title) return false;
-    const title = normalizeText(track.title);
-    return title.includes(term);          // ONLY compare to the song title
-  });
-  if (foundIndex !== -1){
-    playTrack(foundIndex);
-    showToast(`Playing: ${currentPlaylist[foundIndex].title}`);
+/* ---------- Global Playlist Search (outside player) ---------- */
+function performSearch(){
+  const term = searchInput.value.trim().toLowerCase();
+  const by   = searchType.value;
+  if (!term){
+    filteredPlaylists = [...allPlaylists];
+  }else if (by==='title'){
+    filteredPlaylists = allPlaylists.filter(p=>p.title.toLowerCase().includes(term));
   }else{
-    showToast('Song not found in this playlist');
+    filteredPlaylists = allPlaylists.filter(p=>String(p.id).includes(term));
   }
+  backButton.style.display='inline-block';
+  renderPlaylists();
+}
+function resetSearch(){
+  searchInput.value='';
+  filteredPlaylists = [...allPlaylists];
+  backButton.style.display='none';
+  renderPlaylists();
 }
 
 /* ---------- UI Rendering ---------- */
 function renderPlaylists(){
-  playlistContainer.innerHTML = '';
+  playlistContainer.innerHTML='';
   if (filteredPlaylists.length===0){
-    playlistContainer.innerHTML = '<p style="color:#e5e7eb;text-align:center;">No playlists found.</p>';
+    playlistContainer.innerHTML='<p style="color:#e5e7eb;text-align:center;">No playlists found.</p>';
     return;
   }
   filteredPlaylists.forEach(pl=>{
@@ -501,11 +514,11 @@ function renderPlaylists(){
     playlistContainer.appendChild(card);
   });
 
-  // Auto‑open playlist with ID 1 on first load
+  // Auto‑open ID 1 on first load
   if (autoOpenPlaylistId1){
     const p=allPlaylists.find(pl=>String(pl.id)==='1');
     if (p) openPlaylistPage(p.playlist_link);
-    autoOpenPlaylistId1 = false;
+    autoOpenPlaylistId1=false;
   }
 }
 
@@ -514,7 +527,6 @@ function openPlaylistPage(link){
   playlistContainer.style.display='none';
   playerPage.style.display='block';
   modeContainer.style.display='block';
-  playerSearchInput.value='';
   playlistLoadedReady = false;
   loadPlaylist(link);
 }
@@ -550,7 +562,7 @@ function loadPlaylist(link){
         }
       },300);
     });
-    widget.bind(SC.Widget.Events.PLAY,()=>{               // debugging
+    widget.bind(SC.Widget.Events.PLAY,()=>{
       widget.getCurrentSound(cur=>{ if(cur) console.log('Current song:',cur); });
     });
   });
@@ -618,10 +630,6 @@ orderModeBtn.addEventListener('click',()=>setPlayMode('order'));
 repeatModeBtn.addEventListener('click',()=>setPlayMode('repeat'));
 setPlayMode(playMode);
 
-/* ---------- Player Search Listener ---------- */
-playerSearchButton.addEventListener('click',searchInPlaylist);
-playerSearchInput.addEventListener('keyup',e=>{ if(e.key==='Enter') searchInPlaylist(); });
-
 /* ---------- Home Button ---------- */
 homeButton.addEventListener('click',()=>{
   window.location.href='https://yan-shun-081.github.io/yan-1-website.com/';
@@ -649,14 +657,19 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape' && fullscreenContainer.style.display==='flex') closeFullscreen.click();
 });
 
+/* ---------- Global Search Listeners ---------- */
+searchButton.addEventListener('click',performSearch);
+backButton.addEventListener('click',resetSearch);
+searchInput.addEventListener('keyup',e=>{ if(e.key==='Enter') performSearch(); });
+
 /* ---------- Data Load ---------- */
 fetch('data.json')
   .then(r=>r.json())
   .then(data=>{
-    allPlaylists=data;                         // [{id,title,description,image_url,playlist_link},...]
-    filteredPlaylists=[...allPlaylists];      // no external search – just render everything
+    allPlaylists=data;
+    filteredPlaylists=[...allPlaylists];
     const hasUrl=initFromURL();
-    if(!hasUrl) autoOpenPlaylistId1=true;     // auto‑open ID 1 if no URL param
+    if(!hasUrl) autoOpenPlaylistId1=true;
     renderPlaylists();
   })
   .catch(err=>{
