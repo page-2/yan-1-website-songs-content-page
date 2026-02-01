@@ -95,6 +95,21 @@
     display:none;
   }
 
+  /* "ALL SONGS" button */
+  #allSongsContainer{
+    display:flex;
+    justify-content:center;
+    margin-bottom:15px;
+  }
+  #allSongsBtn{
+    padding:8px 15px;
+    background:#ff7043;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+  }
+
   /* ---------- Playlist Grid ---------- */
   #playlistContainer{
     display:flex;
@@ -327,6 +342,11 @@
   <button id="backButton">Back</button>
 </div>
 
+<!-- NEW "ALL SONGS" button (opens page1.html) -->
+<div id="allSongsContainer">
+  <button id="allSongsBtn">ALL SONGS</button>
+</div>
+
 <div id="playlistContainer"></div>
 
 <div id="playerPage">
@@ -388,6 +408,7 @@ const searchInput        = document.getElementById('searchInput');
 const searchButton       = document.getElementById('searchButton');
 const searchType         = document.getElementById('searchType');
 const backButton         = document.getElementById('backButton');
+const allSongsBtn        = document.getElementById('allSongsBtn');
 
 let widget               = null;          // SoundCloud widget
 let currentPlaylist      = [];           // array of tracks
@@ -661,6 +682,7 @@ document.addEventListener('keydown',e=>{
 searchButton.addEventListener('click',performSearch);
 backButton.addEventListener('click',resetSearch);
 searchInput.addEventListener('keyup',e=>{ if(e.key==='Enter') performSearch(); });
+allSongsBtn.addEventListener('click',()=>{ window.location.href='page1.html'; });
 
 /* ---------- Data Load ---------- */
 fetch('data.json')
