@@ -225,6 +225,32 @@
     cursor:pointer;
   }
 
+  /* Player Search Container */
+  #playerSearchContainer {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+    gap: 10px;
+  }
+  
+  #playerSearchInput {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 250px;
+    background: #1e293b;
+    color: white;
+  }
+  
+  #playerSearchButton {
+    padding: 8px 15px;
+    background: #ff7043;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
   /* ---------- Mode Buttons ---------- */
   .mode-btn{
     padding:8px 16px;
@@ -354,6 +380,12 @@
     <button id="repeatModeBtn" class="mode-btn">Repeat</button>
   </div>
 
+  <!-- Player Search Container -->
+  <div id="playerSearchContainer">
+    <input type="text" id="playerSearchInput" placeholder="Search song in playlist...">
+    <button id="playerSearchButton">Search</button>
+  </div>
+
   <div id="playerContainer"></div>
   <div id="controls">
     <button id="prevBtn">⏮ Previous</button>
@@ -406,12 +438,17 @@ const searchButton      = document.getElementById('searchButton');
 const searchType        = document.getElementById('searchType');
 const backButton        = document.getElementById('backButton');
 
+// Player search elements
+const playerSearchInput  = document.getElementById('playerSearchInput');
+const playerSearchButton = document.getElementById('playerSearchButton');
+
 let widget          = null;          // SoundCloud widget
 let currentPlaylist = [];           // array of tracks
 let currentIndex    = 0;
 let allPlaylists    = [];           // data.json
 let playMode        = 'order';      // default
 let filteredPlaylists = [];         // for search results
+let autoOpenPlaylistId1 = false;   // flag to auto-open playlist with ID 1
 
 const SHARE_REDIRECT_BASE =
   'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
@@ -507,6 +544,34 @@ function resetSearch() {
   renderPlaylists();
 }
 
+/* ---------- Player Search Functionality ---------- */
+function searchInPlaylist() {
+  const searchTerm = playerSearchInput.value.trim().toLowerCase();
+  
+  if (!searchTerm) {
+    showToast('Please enter a song name to search');
+    return;
+  }
+  
+  if (!currentPlaylist.length) {
+    showToast('No playlist loaded');
+    return;
+  }
+  
+  // Search for the song in the current playlist
+  const foundIndex = currentPlaylist.findIndex(track => 
+    track.title.toLowerCase().includes(searchTerm)
+  );
+  
+  if (foundIndex !== -1) {
+    // Song found, play it
+    playTrack(foundIndex);
+    showToast(`Playing: ${currentPlaylist[foundIndex].title}`);
+  } else {
+    showToast('Song not found in this playlist');
+  }
+}
+
 /* ---------- UI Rendering ---------- */
 function renderPlaylists(){
   playlistContainer.innerHTML = '';
@@ -553,6 +618,15 @@ function renderPlaylists(){
 
     playlistContainer.appendChild(card);
   });
+
+  // Auto-open playlist with ID 1 on first load
+  if (autoOpenPlaylistId1) {
+    const playlistWithId1 = allPlaylists.find(pl => String(pl.id) === '1');
+    if (playlistWithId1) {
+      openPlaylistPage(playlistWithId1.playlist_link);
+    }
+    autoOpenPlaylistId1 = false; // Only auto-open once
+  }
 }
 
 /* ---------- Player Logic ---------- */
@@ -560,6 +634,7 @@ function openPlaylistPage(link){
   playlistContainer.style.display = 'none';
   playerPage.style.display = 'block';
   modeContainer.style.display = 'block';      // show Random/Order/Repeat options
+  playerSearchInput.value = ''; // Clear previous search
   loadPlaylist(link);
 }
 backBtn.addEventListener('click', ()=>{
@@ -642,7 +717,9 @@ function initFromURL(){
   if(pid){
     const pl = allPlaylists.find(p=>String(p.id)===pid);
     if(pl) openPlaylistPage(pl.playlist_link);
+    return true; // URL parameter found and processed
   }
+  return false; // No URL parameter
 }
 
 /* ---------- Feedback Modal ---------- */
@@ -667,6 +744,14 @@ randomModeBtn.addEventListener('click', ()=>setPlayMode('random'));
 orderModeBtn.addEventListener('click', ()=>setPlayMode('order'));
 repeatModeBtn.addEventListener('click', ()=>setPlayMode('repeat'));
 setPlayMode(playMode);  // initialise active state
+
+/* ---------- Player Search Event Listeners ---------- */
+playerSearchButton.addEventListener('click', searchInPlaylist);
+playerSearchInput.addEventListener('keyup', (e) => {
+  if (e.key === 'Enter') {
+    searchInPlaylist();
+  }
+});
 
 /* ---------- Home Button ---------- */
 homeButton.addEventListener('click', () => {
@@ -732,8 +817,16 @@ fetch('data.json')
   .then(data=>{
     allPlaylists = data;   // expects id, title, description, image_url, playlist_link
     filteredPlaylists = [...allPlaylists]; // Initialize filtered playlists
+    
+    // Check if URL has playlist_id parameter first
+    const hasUrlPlaylist = initFromURL();
+    
+    // If no URL playlist parameter, auto-open playlist with ID 1
+    if (!hasUrlPlaylist) {
+      autoOpenPlaylistId1 = true;
+    }
+    
     renderPlaylists();
-    initFromURL();
   })
   .catch(err=>{
     console.error('Failed to load data.json', err);
