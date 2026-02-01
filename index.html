@@ -455,6 +455,17 @@ const SHARE_REDIRECT_BASE =
   'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
 
 /* ---------- Helper Functions ---------- */
+function normalizeText(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize("NFD")                 // remove accents
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")      // remove emojis & symbols
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function showToast(msg){
   toastElm.textContent = msg;
   toastElm.style.display = 'block';
@@ -464,6 +475,7 @@ function showToast(msg){
     setTimeout(()=> toastElm.style.display = 'none', 500);
   },3000);
 }
+
 function copyToClipboard(text){
   if (navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text)
@@ -485,6 +497,7 @@ function copyToClipboard(text){
     document.body.removeChild(textarea);
   }
 }
+
 function sharePlaylist(pl){
   const link = SHARE_REDIRECT_BASE + encodeURIComponent(pl.id);
   if (navigator.share){
@@ -494,6 +507,7 @@ function sharePlaylist(pl){
     copyToClipboard(link);
   }
 }
+
 function setPlayMode(mode){
   playMode = mode;
   randomModeBtn.classList.toggle('active', mode==='random');
@@ -547,30 +561,32 @@ function resetSearch() {
 
 /* ---------- Player Search Functionality ---------- */
 function searchInPlaylist() {
-  const searchTerm = playerSearchInput.value.trim().toLowerCase();
+  const rawTerm = playerSearchInput.value.trim();
   
-  if (!searchTerm) {
-    showToast('Please enter a song name to search');
+  if (!rawTerm) {
+    showToast('Please enter a song name');
     return;
   }
   
-  if (!playlistLoadedReady) {
-    showToast('Playlist not loaded yet');
+  if (!playlistLoadedReady || !currentPlaylist.length) {
+    showToast('Playlist not ready yet');
     return;
   }
   
-  if (!currentPlaylist.length) {
-    showToast('No tracks in playlist');
-    return;
-  }
+  const term = normalizeText(rawTerm);
   
   // Search for the song in the current playlist
   const foundIndex = currentPlaylist.findIndex(track => {
-    // Check multiple track properties for the search term
-    const title = track.title ? track.title.toLowerCase() : '';
-    const username = track.user ? track.user.username ? track.user.username.toLowerCase() : '' : '';
+    const fields = [
+      track.title,
+      track.user?.username,
+      track.publisher_metadata?.artist,
+      track.publisher_metadata?.album_title
+    ];
     
-    return title.includes(searchTerm) || username.includes(searchTerm);
+    return fields.some(f =>
+      f && normalizeText(f).includes(term)
+    );
   });
   
   if (foundIndex !== -1) {
@@ -648,6 +664,7 @@ function openPlaylistPage(link){
   playlistLoadedReady = false; // Reset playlist loaded flag
   loadPlaylist(link);
 }
+
 backBtn.addEventListener('click', ()=>{
   playerPage.style.display = 'none';
   playlistContainer.style.display = 'block';
@@ -656,6 +673,7 @@ backBtn.addEventListener('click', ()=>{
   widget = null;
   playlistLoadedReady = false;
 });
+
 function loadPlaylist(link){
   playerContainer.innerHTML = `
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
@@ -666,23 +684,26 @@ function loadPlaylist(link){
   widget = SC.Widget(iframe);
 
   widget.bind(SC.Widget.Events.READY, ()=>{
-    playlistLoadedReady = true;
-    widget.getSounds(sounds=>{
-      if (sounds && Array.isArray(sounds)) {
-        currentPlaylist = sounds;
-        // Debug: log the structure of the first track to check available properties
-        if (sounds.length > 0) {
-          console.log('Track structure:', sounds[0]);
+    widget.getSounds(sounds => {
+      // Add delay to ensure metadata is fully loaded
+      setTimeout(() => {
+        if (sounds && Array.isArray(sounds)) {
+          currentPlaylist = sounds;
+          playlistLoadedReady = true;
+          // Debug: log the structure of the first track to check available properties
+          if (sounds.length > 0) {
+            console.log('Track structure:', sounds[0]);
+          }
+          // start index according to mode
+          currentIndex = (playMode==='order')
+            ? 0
+            : Math.floor(Math.random()*sounds.length);
+          playTrack(currentIndex);
+        } else {
+          showToast('Failed to load playlist tracks');
+          currentPlaylist = [];
         }
-        // start index according to mode
-        currentIndex = (playMode==='order')
-          ? 0
-          : Math.floor(Math.random()*sounds.length);
-        playTrack(currentIndex);
-      } else {
-        showToast('Failed to load playlist tracks');
-        currentPlaylist = [];
-      }
+      }, 300);
     });
     
     // Also track current song for debugging
@@ -709,11 +730,13 @@ function loadPlaylist(link){
     }
   });
 }
+
 function playTrack(idx){
   currentIndex = idx;
   widget.skip(currentIndex);
   widget.play();
 }
+
 nextBtn.addEventListener('click', ()=>{
   if(!currentPlaylist.length) return;
   if(playMode==='repeat'){
@@ -727,6 +750,7 @@ nextBtn.addEventListener('click', ()=>{
     playTrack(nextIdx);
   }
 });
+
 prevBtn.addEventListener('click', ()=>{
   if(!currentPlaylist.length) return;
   if(playMode==='repeat'){
@@ -801,7 +825,7 @@ function openImageFullscreen(imageUrl) {
   } else if (fullscreenContainer.mozRequestFullScreen) { /* Firefox */
     fullscreenContainer.mozRequestFullScreen();
   } else if (fullscreenContainer.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-    fullscreenContainer.webkitRequestFullscreen();
+    fullscreenContainer.webkitRequestfullscreen();
   } else if (fullscreenContainer.msRequestFullscreen) { /* IE/Edge */
     fullscreenContainer.msRequestFullscreen();
   }
