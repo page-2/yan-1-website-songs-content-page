@@ -449,6 +449,7 @@ let allPlaylists    = [];           // data.json
 let playMode        = 'order';      // default
 let filteredPlaylists = [];         // for search results
 let autoOpenPlaylistId1 = false;   // flag to auto-open playlist with ID 1
+let playlistLoadedReady = false;   // flag to track when playlist is loaded
 
 const SHARE_REDIRECT_BASE =
   'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
@@ -553,15 +554,24 @@ function searchInPlaylist() {
     return;
   }
   
+  if (!playlistLoadedReady) {
+    showToast('Playlist not loaded yet');
+    return;
+  }
+  
   if (!currentPlaylist.length) {
-    showToast('No playlist loaded');
+    showToast('No tracks in playlist');
     return;
   }
   
   // Search for the song in the current playlist
-  const foundIndex = currentPlaylist.findIndex(track => 
-    track.title.toLowerCase().includes(searchTerm)
-  );
+  const foundIndex = currentPlaylist.findIndex(track => {
+    // Check multiple track properties for the search term
+    const title = track.title ? track.title.toLowerCase() : '';
+    const username = track.user ? track.user.username ? track.user.username.toLowerCase() : '' : '';
+    
+    return title.includes(searchTerm) || username.includes(searchTerm);
+  });
   
   if (foundIndex !== -1) {
     // Song found, play it
@@ -635,6 +645,7 @@ function openPlaylistPage(link){
   playerPage.style.display = 'block';
   modeContainer.style.display = 'block';      // show Random/Order/Repeat options
   playerSearchInput.value = ''; // Clear previous search
+  playlistLoadedReady = false; // Reset playlist loaded flag
   loadPlaylist(link);
 }
 backBtn.addEventListener('click', ()=>{
@@ -643,24 +654,44 @@ backBtn.addEventListener('click', ()=>{
   modeContainer.style.display = 'none';       // hide again
   playerContainer.innerHTML = '';
   widget = null;
+  playlistLoadedReady = false;
 });
 function loadPlaylist(link){
   playerContainer.innerHTML = `
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
             allow="autoplay"
-            src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}">
+            src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true">
     </iframe>`;
   const iframe = document.getElementById('scPlayer');
   widget = SC.Widget(iframe);
 
   widget.bind(SC.Widget.Events.READY, ()=>{
+    playlistLoadedReady = true;
     widget.getSounds(sounds=>{
-      currentPlaylist = sounds;
-      // start index according to mode
-      currentIndex = (playMode==='order')
-        ? 0
-        : Math.floor(Math.random()*sounds.length);
-      playTrack(currentIndex);
+      if (sounds && Array.isArray(sounds)) {
+        currentPlaylist = sounds;
+        // Debug: log the structure of the first track to check available properties
+        if (sounds.length > 0) {
+          console.log('Track structure:', sounds[0]);
+        }
+        // start index according to mode
+        currentIndex = (playMode==='order')
+          ? 0
+          : Math.floor(Math.random()*sounds.length);
+        playTrack(currentIndex);
+      } else {
+        showToast('Failed to load playlist tracks');
+        currentPlaylist = [];
+      }
+    });
+    
+    // Also track current song for debugging
+    widget.bind(SC.Widget.Events.PLAY, () => {
+      widget.getCurrentSound(currentSound => {
+        if (currentSound) {
+          console.log('Current song:', currentSound);
+        }
+      });
     });
   });
 
