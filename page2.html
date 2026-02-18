@@ -90,6 +90,7 @@ body {
   margin: 15px 0;
   word-break: break-all;
   color: #e5e7eb;
+  display: none;
 }
 
 .share-section {
@@ -142,7 +143,7 @@ body {
 <button class="continue-button" id="continueButton">Continue</button>
 
 <div class="player-container">
-  <div class="song-title" id="songTitle">Loading song...</div>
+  <div class="song-title" id="songTitle"></div>
   <div id="player"></div>
   <div class="share-section">
     <button class="share-button" id="shareButton">Share This Song</button>
@@ -160,14 +161,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const songUrl = urlParams.get('url');
 
 let currentWidget = null;
-
-// Display song title
-const songTitleElement = document.getElementById('songTitle');
-if (songUrl) {
-  songTitleElement.textContent = decodeURIComponent(songUrl);
-} else {
-  songTitleElement.textContent = "No song URL provided";
-}
 
 // Continue button functionality
 document.getElementById('continueButton').addEventListener('click', () => {
