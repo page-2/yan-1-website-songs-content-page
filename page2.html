@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Song Detail - Music Playlist</title>
+
+<style>
+body {
+  background-color: #121212;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  text-align: center;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
+  text-decoration: none;
+}
+
+.title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 12px;
+  font-size: 2rem;
+  background: linear-gradient(90deg, #ff8a00, #e91e63);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.under-title {
+  text-align: center;
+  margin: 4px 0 6px;
+  font-size: 1.1rem;
+  background: linear-gradient(90deg, #ff8a00, #e91e63);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.subheading {
+  text-align: center;
+  margin-top: 5px;
+  font-size: 1rem;
+  background: linear-gradient(90deg, #ff8a00, #e91e63);
+  -webkit-background-clip: text;
+  color: transparent;
+  margin-bottom: 20px;
+}
+
+.continue-button {
+  background: #ff7043;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 15px 0;
+  display: inline-block;
+}
+
+.continue-button:hover {
+  background: #e65100;
+}
+
+.player-container {
+  margin: 20px auto;
+  width: 100%;
+  max-width: 500px;
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.song-title {
+  font-size: 20px;
+  margin: 15px 0;
+  word-break: break-all;
+  color: #e5e7eb;
+}
+
+.share-section {
+  margin-top: 20px;
+}
+
+.share-button {
+  background: #ff7043;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 15px 0;
+}
+
+.share-button:hover {
+  background: #e65100;
+}
+
+.copy-notification {
+  color: #4caf50;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.copy-notification.show {
+  opacity: 1;
+}
+
+.footer {
+  text-align: center;
+  padding: 20px 0;
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+</style>
+</head>
+<body>
+
+<a href="https://yan-shun-081.github.io/yan-1-website.com/" target="_blank" class="home-button">🏠</a>
+
+<h2 class="title">SoundCloud <span>🎧</span></h2>
+<p class="under-title">Every song has a place.</p>
+<p class="subheading">A home for every song and every soul — explore music beyond limits, across languages, moods, and moments.</p>
+
+<button class="continue-button" id="continueButton">Continue</button>
+
+<div class="player-container">
+  <div class="song-title" id="songTitle">Loading song...</div>
+  <div id="player"></div>
+  <div class="share-section">
+    <button class="share-button" id="shareButton">Share This Song</button>
+    <div class="copy-notification" id="copyNotification">Link copied to clipboard!</div>
+  </div>
+</div>
+
+<div class="footer">© 2026 SoundCloud· Built with ❤️ by YAN</div>
+
+<script src="https://w.soundcloud.com/player/api.js"></script>
+
+<script>
+// Get the song URL from query parameter
+const urlParams = new URLSearchParams(window.location.search);
+const songUrl = urlParams.get('url');
+
+let currentWidget = null;
+
+// Display song title
+const songTitleElement = document.getElementById('songTitle');
+if (songUrl) {
+  songTitleElement.textContent = decodeURIComponent(songUrl);
+} else {
+  songTitleElement.textContent = "No song URL provided";
+}
+
+// Continue button functionality
+document.getElementById('continueButton').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+
+// Share button functionality
+document.getElementById('shareButton').addEventListener('click', () => {
+  if (navigator.share) {
+    navigator.share({
+      title: 'Check out this song',
+      text: 'I found this amazing song!',
+      url: window.location.href
+    }).catch(console.error);
+  } else {
+    // Fallback: copy current URL to clipboard
+    copyToClipboard(window.location.href);
+  }
+});
+
+function copyToClipboard(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
+  
+  // Show notification
+  const notification = document.getElementById('copyNotification');
+  notification.classList.add('show');
+  setTimeout(() => {
+    notification.classList.remove('show');
+  }, 2000);
+}
+
+function loadPlayer(link) {
+  const playerContainer = document.getElementById('player');
+  playerContainer.innerHTML = '';
+
+  const iframe = document.createElement("iframe");
+  iframe.allow = "autoplay";
+  iframe.scrolling = "no";
+  iframe.style.borderRadius = "12px";
+  iframe.style.border = "none";
+  iframe.style.width = "100%";
+
+  if (link.includes("soundcloud.com")) {
+    iframe.height = "166";
+    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=false&visual=true`;
+    playerContainer.appendChild(iframe);
+
+    const widget = SC.Widget(iframe);
+    currentWidget = widget;
+    
+    // Play the song when loaded
+    widget.bind(SC.Widget.Events.READY, () => {
+      widget.play();
+    });
+
+  } else if (link.includes("audiomack.com")) {
+    iframe.height = "150";
+    let path = link.replace("https://audiomack.com/", "").replace("/song/", "/");
+    iframe.src = `https://audiomack.com/embed/song/${path}`;
+    playerContainer.appendChild(iframe);
+  } else {
+    playerContainer.innerHTML = `<p>Unsupported URL: ${link}</p>`;
+  }
+}
+
+// Load player when page loads
+window.addEventListener('load', () => {
+  if (songUrl) {
+    loadPlayer(songUrl);
+  }
+});
+</script>
+
+</body>
+</html>
