@@ -95,19 +95,23 @@
     display:none;
   }
 
-  /* "ALL SONGS" button */
-  #allSongsContainer{
+  /* Button container for CLICK ME and DONT CLICK ME */
+  #buttonContainer{
     display:flex;
     justify-content:center;
+    gap: 10px;
     margin-bottom:15px;
   }
-  #allSongsBtn{
+  #allSongsBtn, #dontClickBtn {
     padding:8px 15px;
     background:#ff7043;
     color:white;
     border:none;
     border-radius:5px;
     cursor:pointer;
+  }
+  #dontClickBtn {
+    background: #555;
   }
 
   /* ---------- Playlist Grid ---------- */
@@ -342,9 +346,10 @@
   <button id="backButton">Back</button>
 </div>
 
-<!-- NEW "ALL SONGS" button (opens page1.html) -->
-<div id="allSongsContainer">
-  <button id="allSongsBtn">ALL SONGS</button>
+<!-- Modified button section with CLICK ME and DONT CLICK ME buttons -->
+<div id="buttonContainer">
+  <button id="allSongsBtn">CLICK ME</button>
+  <button id="dontClickBtn">DONT CLICK ME</button>
 </div>
 
 <div id="playlistContainer"></div>
@@ -409,6 +414,7 @@ const searchButton       = document.getElementById('searchButton');
 const searchType         = document.getElementById('searchType');
 const backButton         = document.getElementById('backButton');
 const allSongsBtn        = document.getElementById('allSongsBtn');
+const dontClickBtn       = document.getElementById('dontClickBtn');
 
 let widget               = null;          // SoundCloud widget
 let currentPlaylist      = [];           // array of tracks
@@ -682,7 +688,12 @@ document.addEventListener('keydown',e=>{
 searchButton.addEventListener('click',performSearch);
 backButton.addEventListener('click',resetSearch);
 searchInput.addEventListener('keyup',e=>{ if(e.key==='Enter') performSearch(); });
+
+/* ---------- Button Event Listeners ---------- */
 allSongsBtn.addEventListener('click',()=>{ window.location.href='page1.html'; });
+dontClickBtn.addEventListener('click', () => {
+  window.open('https://soundcloud.com/yan-shun-335725597/sets/all-songs?si=64315d78a42a48e3b2e64f0710f759f0&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing', '_blank');
+});
 
 /* ---------- Data Load ---------- */
 fetch('data.json')
