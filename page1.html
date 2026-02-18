@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Music Playlist - One at a Time</title>
+<title>Music Playlist - Smart Lazy Loading</title>
+
 <style>
 body {
   background-color: #121212;
@@ -17,117 +18,241 @@ h1 {
   margin-bottom: 30px;
 }
 
-.player-container {
+.player-wrapper {
   margin: 20px auto;
   width: 100%;
   max-width: 500px;
+}
+
+.player-container {
+  width: 100%;
+  min-height: 180px;
+  background: #1e1e1e;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
-iframe {
-  border-radius: 12px;
-  border: none;
-  width: 100%;
-  margin-bottom: 20px;
+.loading-text {
+  opacity: 0.6;
+}
+
+.share-symbol {
+  font-size: 24px;
+  cursor: pointer;
+  color: #ff7043;
+  margin: 10px 0;
+  display: block;
+  text-align: center;
 }
 </style>
 </head>
 <body>
+
 <h1>Music Playlist</h1>
 <div id="players"></div>
 
-<!-- SoundCloud Widget API -->
 <script src="https://w.soundcloud.com/player/api.js"></script>
 
 <script>
-const sheetUrl = "https://docs.google.com/spreadsheets/d/1W_3cdE6cmSGHQ72ZUAenLpoWdvxSNKNEjpCSbC9mIPI/gviz/tq?tqx=out:json";
-
+const SHEET_ID = "1W_3cdE6cmSGHQ72ZUAenLpoWdvxSNKNEjpCSbC9mIPI";
+const BATCH_SIZE = 150;
+let offset = 0;
+let isStopped = false;
 let currentSoundCloudWidget = null;
 let currentAudiomackIframe = null;
 
-async function loadMusic() {
+const container = document.getElementById("players");
+
+/* ---------- Fetch Batch ---------- */
+async function fetchBatch() {
+  if (isStopped) return;
+
+  const query = encodeURIComponent(`select A limit ${BATCH_SIZE} offset ${offset}`);
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq=${query}`;
+
   try {
-    const response = await fetch(sheetUrl);
-    const text = await response.text();
+    const res = await fetch(url);
+    const text = await res.text();
     const json = JSON.parse(text.substr(47).slice(0, -2));
     const rows = json.table.rows;
-    const container = document.getElementById('players');
 
-    rows.forEach(row => {
-      const link = row.c[0]?.v;
-      if (!link) return;
+    if (!rows || rows.length === 0) {
+      isStopped = true;
+      console.log("No more data. Stopped loading.");
+      return;
+    }
 
-      const div = document.createElement('div');
-      div.className = "player-container";
+    const links = rows
+      .map(r => r.c[0]?.v)
+      .filter(Boolean);
 
-      let iframe = document.createElement('iframe');
-      iframe.scrolling = "no";
-      iframe.allow = "autoplay";
+    if (links.length === 0) {
+      isStopped = true;
+      return;
+    }
 
-      if (link.includes("soundcloud.com")) {
-        // SoundCloud
-        const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`;
-        iframe.src = embedUrl;
-        iframe.height = "166";
+    shuffleArray(links);
+    createLazyPlaceholders(links);
 
-        div.appendChild(iframe);
-        container.appendChild(div);
+    offset += BATCH_SIZE;
 
-        // Initialize SC Widget
-        const widget = SC.Widget(iframe);
-
-        div.addEventListener('click', () => {
-          // Stop previous SC
-          if (currentSoundCloudWidget && currentSoundCloudWidget !== widget) {
-            currentSoundCloudWidget.pause();
-          }
-          // Stop previous Audiomack
-          if (currentAudiomackIframe) {
-            const src = currentAudiomackIframe.src;
-            currentAudiomackIframe.src = src;
-            currentAudiomackIframe = null;
-          }
-          currentSoundCloudWidget = widget;
-          widget.play();
-        });
-      } else if (link.includes("audiomack.com")) {
-        // Audiomack
-        let path = link.replace("https://audiomack.com/", "").replace("/song/", "/");
-        const embedUrl = `https://audiomack.com/embed/song/${path}`;
-        iframe.src = embedUrl;
-        iframe.height = "150";
-
-        div.appendChild(iframe);
-        container.appendChild(div);
-
-        div.addEventListener('click', () => {
-          // Stop previous SC
-          if (currentSoundCloudWidget) {
-            currentSoundCloudWidget.pause();
-            currentSoundCloudWidget = null;
-          }
-          // Stop previous Audiomack
-          if (currentAudiomackIframe && currentAudiomackIframe !== iframe) {
-            const src = currentAudiomackIframe.src;
-            currentAudiomackIframe.src = src;
-          }
-          currentAudiomackIframe = iframe;
-        });
-      } else {
-        const msg = document.createElement('p');
-        msg.textContent = "Unsupported link: " + link;
-        div.appendChild(msg);
-        container.appendChild(div);
-      }
-    });
   } catch (err) {
-    console.error("Error loading sheet:", err);
-    const container = document.getElementById('players');
-    container.textContent = "Failed to load playlist.";
+    console.error("Sheet error:", err);
   }
 }
 
-loadMusic();
+/* ---------- Shuffle ---------- */
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+/* ---------- Create Lazy Containers ---------- */
+function createLazyPlaceholders(links) {
+  links.forEach(link => {
+    // Create wrapper for player and share symbol
+    const wrapper = document.createElement("div");
+    wrapper.className = "player-wrapper";
+    
+    const div = document.createElement("div");
+    div.className = "player-container";
+    div.dataset.link = link;
+
+    const text = document.createElement("div");
+    text.className = "loading-text";
+    text.innerText = "Scroll to load player...";
+    div.appendChild(text);
+
+    wrapper.appendChild(div);
+    
+    // Add share symbol below the player
+    const shareSymbol = document.createElement("div");
+    shareSymbol.className = "share-symbol";
+    shareSymbol.innerHTML = "ᯓ➤";
+    shareSymbol.title = "Share this song";
+    shareSymbol.addEventListener("click", (e) => {
+      e.stopPropagation();
+      shareSong(link);
+    });
+    wrapper.appendChild(shareSymbol);
+
+    container.appendChild(wrapper);
+    observer.observe(div);
+  });
+}
+
+/* ---------- Share Song Function ---------- */
+function shareSong(songUrl) {
+  const shareUrl = `https://page-2.github.io/yan-1-website-songs-content-page/page2.html?url=${encodeURIComponent(songUrl)}`;
+  
+  // Check if Web Share API is supported
+  if (navigator.share) {
+    navigator.share({
+      title: 'Check out this song',
+      text: 'I found this amazing song!',
+      url: shareUrl
+    }).catch(console.error);
+  } else {
+    // Fallback: copy to clipboard
+    copyToClipboard(shareUrl);
+  }
+}
+
+/* ---------- Copy to Clipboard Fallback ---------- */
+function copyToClipboard(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
+  
+  // Show confirmation
+  alert("Link copied to clipboard!");
+}
+
+/* ---------- Lazy Observer ---------- */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      loadPlayer(entry.target);
+      observer.unobserve(entry.target);
+    }
+  });
+}, {
+  rootMargin: "200px"
+});
+
+/* ---------- Load Real Player ---------- */
+function loadPlayer(div) {
+  const link = div.dataset.link;
+  const wrapper = div.parentElement;
+  
+  div.innerHTML = "";
+
+  const iframe = document.createElement("iframe");
+  iframe.allow = "autoplay";
+  iframe.scrolling = "no";
+  iframe.style.borderRadius = "12px";
+  iframe.style.border = "none";
+  iframe.style.width = "100%";
+
+  if (link.includes("soundcloud.com")) {
+    iframe.height = "166";
+    iframe.src =
+      `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=false&visual=true`;
+
+    div.appendChild(iframe);
+
+    const widget = SC.Widget(iframe);
+
+    div.addEventListener("click", () => {
+      if (currentSoundCloudWidget && currentSoundCloudWidget !== widget) {
+        currentSoundCloudWidget.pause();
+      }
+      if (currentAudiomackIframe) {
+        currentAudiomackIframe.src = currentAudiomackIframe.src;
+        currentAudiomackIframe = null;
+      }
+      currentSoundCloudWidget = widget;
+      widget.play();
+    });
+
+  } else if (link.includes("audiomack.com")) {
+    iframe.height = "150";
+    let path = link.replace("https://audiomack.com/", "").replace("/song/", "/");
+    iframe.src = `https://audiomack.com/embed/song/${path}`;
+
+    div.appendChild(iframe);
+
+    div.addEventListener("click", () => {
+      if (currentSoundCloudWidget) {
+        currentSoundCloudWidget.pause();
+        currentSoundCloudWidget = null;
+      }
+      if (currentAudiomackIframe && currentAudiomackIframe !== iframe) {
+        currentAudiomackIframe.src = currentAudiomackIframe.src;
+      }
+      currentAudiomackIframe = iframe;
+    });
+  }
+}
+
+/* ---------- Auto Load Every 1 Minute ---------- */
+setInterval(() => {
+  if (!isStopped) {
+    fetchBatch();
+  }
+}, 60000);
+
+/* ---------- Initial Load ---------- */
+fetchBatch();
+
 </script>
 </body>
 </html>
