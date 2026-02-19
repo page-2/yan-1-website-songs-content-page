@@ -424,9 +424,19 @@ let playMode             = 'order';      // default mode
 let filteredPlaylists    = [];           // for global playlist rendering
 let autoOpenPlaylistId1  = false;        // auto‑open ID 1 if no URL param
 let playlistLoadedReady  = false;        // set when widget metadata is ready
+let userInteracted       = false;        // for mobile autoplay permission
 
 const SHARE_REDIRECT_BASE =
   'https://yan-1-related-1.github.io/yan-1-website-shared-links-redirecting/songs-content-page-shared-links-redirecting.html?playlist_id=';
+
+// detect user interaction (mobile autoplay permission)
+document.addEventListener('click', () => {
+  userInteracted = true;
+}, { once: true });
+
+document.addEventListener('touchstart', () => {
+  userInteracted = true;
+}, { once: true });
 
 /* ---------- Helper Functions ---------- */
 function normalizeText(str){
@@ -569,7 +579,7 @@ function loadPlaylist(link){
   playerContainer.innerHTML=`
     <iframe id="scPlayer" width="100%" height="450" scrolling="no" frameborder="no"
             allow="autoplay"
-            src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true">
+            src="https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true&continuous_play=true">
     </iframe>`;
   const iframe=document.getElementById('scPlayer');
   widget=SC.Widget(iframe);
@@ -596,31 +606,56 @@ function loadPlaylist(link){
 
   widget.bind(SC.Widget.Events.FINISH,()=>{
     if(!currentPlaylist.length) return;
+
+    let nextIdx;
+
     if(playMode==='repeat'){
-      playTrack(currentIndex);
-    }else if(playMode==='random'){
-      const nextIdx=Math.floor(Math.random()*currentPlaylist.length);
-      playTrack(nextIdx);
-    }else{
-      const nextIdx=(currentIndex+1)%currentPlaylist.length;
-      playTrack(nextIdx);
+      nextIdx = currentIndex;
+    }
+    else if(playMode==='random'){
+      nextIdx = Math.floor(Math.random()*currentPlaylist.length);
+    }
+    else{
+      nextIdx = (currentIndex+1)%currentPlaylist.length;
+    }
+
+    currentIndex = nextIdx;
+
+    widget.skip(currentIndex);
+
+    if(userInteracted){
+      setTimeout(()=>{
+        widget.play();
+      },300);
     }
   });
 }
 function playTrack(idx){
-  currentIndex=idx;
+  currentIndex = idx;
+
   widget.skip(currentIndex);
-  widget.play();
+
+  if(userInteracted){
+    setTimeout(()=>{
+      widget.play();
+    },300);
+  }
 }
 nextBtn.addEventListener('click',()=>{ if(!currentPlaylist.length) return;
-  if(playMode==='repeat') playTrack(currentIndex);
-  else if(playMode==='random') playTrack(Math.floor(Math.random()*currentPlaylist.length));
-  else playTrack((currentIndex+1)%currentPlaylist.length);
+  let nextIdx;
+  if(playMode==='repeat') nextIdx = currentIndex;
+  else if(playMode==='random') nextIdx = Math.floor(Math.random()*currentPlaylist.length);
+  else nextIdx = (currentIndex+1)%currentPlaylist.length;
+  
+  playTrack(nextIdx);
 });
 prevBtn.addEventListener('click',()=>{ if(!currentPlaylist.length) return;
-  if(playMode==='repeat') playTrack(currentIndex);
-  else if(playMode==='random') playTrack(Math.floor(Math.random()*currentPlaylist.length));
-  else playTrack((currentIndex-1+currentPlaylist.length)%currentPlaylist.length);
+  let nextIdx;
+  if(playMode==='repeat') nextIdx = currentIndex;
+  else if(playMode==='random') nextIdx = Math.floor(Math.random()*currentPlaylist.length);
+  else nextIdx = (currentIndex-1+currentPlaylist.length)%currentPlaylist.length;
+  
+  playTrack(nextIdx);
 });
 
 /* ---------- URL handling (shared link) ---------- */
